@@ -1,0 +1,13 @@
+//
+//  {{ viewName }}.h
+//  {{ projectName }}
+//
+//  Created by the Manticore iOS View Generator on {{ date }}.
+//  Copyright (c) {{ year }} {{ projectName }}. All rights reserved.
+//
+
+#import "{{ baseClass }}.h"
+
+@interface {{ viewName }} : {{ baseClass }}
+
+@end
