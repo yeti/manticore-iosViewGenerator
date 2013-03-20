@@ -38,5 +38,10 @@ The schema file is a plain text file in the following format, shown below:
        View2A
        View2B
 
-Note that the prefix and suffixes are not included in the schema definition.
+Sections should correspond to a user interface's tabs and views should correspond to the pages
+seens within a tab. Prefixes and suffixes are not included in the schema definition.
+
+Sections can also be shown without any views if a single-level hierarchy, but to keep consistency
+a single view should be created for that section.
+
 
