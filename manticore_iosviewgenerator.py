@@ -36,6 +36,7 @@ import os
 import os.path
 import string
 from datetime import date
+import logging
 
 def write_define(schema):
     i = 1
@@ -107,6 +108,8 @@ def parse_view_schema(filename, prefix="", length="long"):
     sections = []
     views = []
 
+    current_section = ""
+
     f = open(filename, "r")
     with f:
         line = f.readline() 
@@ -142,10 +145,15 @@ def parse_view_schema(filename, prefix="", length="long"):
                     else:
                         line = line + "VC"
 
-
             # identify the unique name
             vc_name = prefix_remover(line[0:pos], prefix)
             vc_name = special_names(vc_name)
+
+            if is_section:
+                current_section = vc_name
+            else:
+                if vc_name.find(current_section) == -1:
+                    logging.warning("View name should have the same prefix as its owning section: %s" % vc_name)
 
             if is_section or line[-len(SECTION_SUFFIX):].lower() == SECTION_SUFFIX.lower():
                 sections.append({ "type" : "section", "variable_name": "SECTION_"  + string.upper(vc_name), "mapped_to" : prefix + line })
@@ -161,10 +169,10 @@ def parse_view_schema(filename, prefix="", length="long"):
 def replace_in_file(template, output, dict):
 
     if os.path.isfile(output):
-        print "Skipping " + output
+        logging.warning("Skipping " + output)
         return False
 
-    print "Creating " + output
+    logging.info("Creating " + output)
 
     f = open(template, "r")
     g = open(output, "w")
