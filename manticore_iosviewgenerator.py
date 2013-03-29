@@ -131,6 +131,10 @@ def parse_view_schema(filename, prefix="", length="long"):
             pos = line.find("SectionViewController")
             if pos <= 0:
                 pos = line.find("ViewController")
+            if pos <= 0:
+                pos = line.find("SectionVC")
+            if pos <= 0:
+                pos = line.find("VC")
 
             if pos <= 0: # default, only the unique name is provided
                 pos = len(line)
@@ -222,14 +226,14 @@ def create_templates_from_schema(schema):
                 "baseClass" : base_class, }
 
         # create the files
+        template_dir = os.path.dirname(os.path.realpath(__file__)) + "/"
         for ext in ("xib", "h", "m"):
-            replace_in_file(template % ext, entry["mapped_to"] + "." + ext, dict)
+            replace_in_file(template_dir + (template % ext), entry["mapped_to"] + "." + ext, dict)
 
 #(sections, views) = walk_directory("WM")
 
-def main_script(schema, prefix, mode):
-
-    (sections, views) = parse_view_schema("view_schema.txt", "WM", "short")
+def main_script(schema_file, prefix, mode):
+    (sections, views) = parse_view_schema(schema_file, prefix, mode)
 
     create_templates_from_schema(sections)
     create_templates_from_schema(views)
