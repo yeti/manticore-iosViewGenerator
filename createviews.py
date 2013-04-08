@@ -38,6 +38,11 @@ import string
 from datetime import date
 import logging
 
+SECTION_SUFFIX = "SectionViewController"
+VIEW_SUFFIX = "ViewController"
+SHORT_SECTION_SUFFIX = "SectionVC"
+SHORT_VIEW_SUFFIX = "VC"
+
 def write_define(schema):
     i = 1
     for s in schema:
@@ -94,7 +99,7 @@ def walk_directory(prefix=""):
                 vc_name = special_names(vc_name)
 
                 if string.find(contents, "MCSectionViewController") != -1 or string.find(contents, "SectionViewController") != -1:
-                    sections.append({ "type" : "section", "variable_name": "SECTION_"  + string.upper(vc_name), "mapped_to" : filepart })
+                    sections.append({ "type" : "section", "variable_name": "SECTION_"  + string.upper(vc_name), "mapped_to" : filepart})
                 else:
                     views.append({ "type" : "view", "variable_name": "VIEW_" + string.upper(vc_name), "mapped_to" : filepart })
 
@@ -102,8 +107,7 @@ def walk_directory(prefix=""):
 
 
 def parse_view_schema(filename, prefix="", length="long"):
-    SECTION_SUFFIX = "SectionViewController"
-    VIEW_SUFFIX = "ViewController"
+
 
     sections = []
     views = []
@@ -128,26 +132,26 @@ def parse_view_schema(filename, prefix="", length="long"):
                 line = line[:-1] # remove last character
 
             # automatically remove proper extensions, including everything thereafter
-            pos = line.find("SectionViewController")
+            pos = line.find(SECTION_SUFFIX)
             if pos < 0:
-                pos = line.find("ViewController")
+                pos = line.find(VIEW_SUFFIX)
             if pos < 0:
-                pos = line.find("SectionVC")
+                pos = line.find(SHORT_SECTION_SUFFIX)
             if pos < 0:
-                pos = line.find("VC")
+                pos = line.find(SHORT_VIEW_SUFFIX)
 
             if pos < 0: # default, only the unique name is provided
                 pos = len(line)
                 if length=="long":
                     if is_section: # append the decscriptive full name as necessary
-                        line = line + "SectionViewController"
+                        line = line + SECTION_SUFFIX
                     else:
-                        line = line + "ViewController"
+                        line = line + VIEW_SUFFIX
                 else:
                     if is_section: # append the decscriptive full name as necessary
-                        line = line + "SectionVC"
+                        line = line + SHORT_SECTION_SUFFIX
                     else:
-                        line = line + "VC"
+                        line = line + SHORT_VIEW_SUFFIX
 
             # identify the unique name
             vc_name = prefix_remover(line[0:pos], prefix)
@@ -160,9 +164,9 @@ def parse_view_schema(filename, prefix="", length="long"):
                     logging.warning("View name should have the same prefix as its owning section: %s" % vc_name)
 
             if is_section or line[-len(SECTION_SUFFIX):].lower() == SECTION_SUFFIX.lower():
-                sections.append({ "type" : "section", "variable_name": "SECTION_"  + string.upper(vc_name), "mapped_to" : prefix + line })
+                sections.append({ "type" : "section", "variable_name": "SECTION_"  + string.upper(vc_name), "mapped_to" : prefix + line, "vc_name" : prefix + vc_name })
             else:
-                views.append({ "type" : "view", "variable_name": "VIEW_" + string.upper(vc_name), "mapped_to" : prefix + line })
+                views.append({ "type" : "view", "variable_name": "VIEW_" + string.upper(vc_name), "mapped_to" : prefix + line,  "vc_name" : prefix + vc_name })
 
             # read the next line
             line = f.readline()
@@ -172,6 +176,7 @@ def parse_view_schema(filename, prefix="", length="long"):
 
 def replace_in_file(template, output, dict):
 
+    # this statement is now guared by the caller
     if os.path.isfile(output):
         logging.warning("Skipping " + output)
         return False
@@ -194,6 +199,31 @@ def get_project_name_from_dir():
     full_dir = os.getcwd()
     dir_parts = full_dir.split("/")
     return dir_parts[-1]
+
+# Checks to ensure that the file hasn't already been created by this script
+# regardless of what the script might think is the extension, e.g., ViewController or VC.
+# The file already exists if either suffix is found. 
+#
+# Special code is added to detect for SectionViewController and SectionVC, 
+# which can have the same name as ViewController and VC though not recommended.
+#
+# extension should include .
+def check_file_exists(name, extension):
+    if name.endswith(SECTION_SUFFIX) >= 0: # if is a section
+        test_root = name[:-len(SECTION_SUFFIX)]
+        return os.path.isfile(test_root + SECTION_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_SECTION_SUFFIX + extension)
+    elif name.endswith(SHORT_SECTION_SUFFIX) >= 0: 
+        test_root = name[:-len(SHORT_SECTION_SUFFIX)]
+        return os.path.isfile(test_root + SECTION_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_SECTION_SUFFIX + extension)
+    elif name.endswith(VIEW_SUFFIX) >= 0:
+        test_root = name[:-len(VIEW_SUFFIX)]
+        return os.path.isfile(test_root + VIEW_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_VIEW_SUFFIX + extension)
+    elif name.endswith(SHORT_VIEW_SUFFIX) >= 0:
+        test_root = name[:-len(SHORT_VIEW_SUFFIX)]
+        return os.path.isfile(test_root + VIEW_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_VIEW_SUFFIX + extension)
+    else:
+        assert False        
+
 
 def create_templates_from_schema(schema):
     for entry in schema:
@@ -228,9 +258,11 @@ def create_templates_from_schema(schema):
         # create the files
         template_dir = os.path.dirname(os.path.realpath(__file__)) + "/"
         for ext in ("xib", "h", "m"):
-            replace_in_file(template_dir + (template % ext), entry["mapped_to"] + "." + ext, dict)
+            if check_file_exists(entry["mapped_to"], "." + ext):
+                logging.warning("Skipping " + entry["mapped_to"] + "." + ext)
+            else:
+                replace_in_file(template_dir + (template % ext), entry["mapped_to"] + "." + ext, dict)
 
-#(sections, views) = walk_directory("WM")
 
 def main_script(schema_file, prefix, mode):
     (sections, views) = parse_view_schema(schema_file, prefix, mode)
