@@ -209,21 +209,60 @@ def get_project_name_from_dir():
 #
 # extension should include .
 def check_file_exists(name, extension):
-    if name.endswith(SECTION_SUFFIX) >= 0: # if is a section
+    if name.endswith(SECTION_SUFFIX): # if is a section
         test_root = name[:-len(SECTION_SUFFIX)]
         return os.path.isfile(test_root + SECTION_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_SECTION_SUFFIX + extension)
-    elif name.endswith(SHORT_SECTION_SUFFIX) >= 0: 
+    elif name.endswith(SHORT_SECTION_SUFFIX): 
         test_root = name[:-len(SHORT_SECTION_SUFFIX)]
+
         return os.path.isfile(test_root + SECTION_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_SECTION_SUFFIX + extension)
-    elif name.endswith(VIEW_SUFFIX) >= 0:
+    elif name.endswith(VIEW_SUFFIX) :
         test_root = name[:-len(VIEW_SUFFIX)]
+
         return os.path.isfile(test_root + VIEW_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_VIEW_SUFFIX + extension)
-    elif name.endswith(SHORT_VIEW_SUFFIX) >= 0:
+    elif name.endswith(SHORT_VIEW_SUFFIX):
         test_root = name[:-len(SHORT_VIEW_SUFFIX)]
+        
         return os.path.isfile(test_root + VIEW_SUFFIX + extension) or  os.path.isfile(test_root + SHORT_VIEW_SUFFIX + extension)
     else:
         assert False        
 
+def which_file_exists(name, extension):
+    if name.endswith(SECTION_SUFFIX): # if is a section
+        test_root = name[:-len(SECTION_SUFFIX)]
+        if os.path.isfile(test_root + SECTION_SUFFIX + extension):
+            return test_root + SECTION_SUFFIX + extension
+        elif  os.path.isfile(test_root + SHORT_SECTION_SUFFIX + extension):
+            return test_root + SHORT_SECTION_SUFFIX + extension
+        else:
+            return ""
+    elif name.endswith(SHORT_SECTION_SUFFIX): 
+        test_root = name[:-len(SHORT_SECTION_SUFFIX)]
+
+        if os.path.isfile(test_root + SECTION_SUFFIX + extension):
+            return test_root + SECTION_SUFFIX + extension
+        elif os.path.isfile(test_root + SHORT_SECTION_SUFFIX + extension):
+            return test_root + SHORT_SECTION_SUFFIX + extension
+        else:
+            return ""
+    elif name.endswith(VIEW_SUFFIX) :
+        test_root = name[:-len(VIEW_SUFFIX)]
+        if os.path.isfile(test_root + VIEW_SUFFIX + extension):
+            return test_root + VIEW_SUFFIX + extension
+        elif  os.path.isfile(test_root + SHORT_VIEW_SUFFIX + extension):
+            return test_root + SHORT_VIEW_SUFFIX + extension
+        else:
+            return ""
+    elif name.endswith(SHORT_VIEW_SUFFIX):
+        test_root = name[:-len(SHORT_VIEW_SUFFIX)]
+        if os.path.isfile(test_root + VIEW_SUFFIX + extension):
+            return test_root + VIEW_SUFFIX + extension
+        elif os.path.isfile(test_root + SHORT_VIEW_SUFFIX + extension):
+            return test_root + SHORT_VIEW_SUFFIX + extension
+        else:
+            return ""
+    else:
+        return ""   
 
 def create_templates_from_schema(schema):
     for entry in schema:
@@ -259,8 +298,14 @@ def create_templates_from_schema(schema):
         template_dir = os.path.dirname(os.path.realpath(__file__)) + "/"
         for ext in ("xib", "h", "m"):
             if check_file_exists(entry["mapped_to"], "." + ext):
-                logging.warning("Skipping " + entry["mapped_to"] + "." + ext)
+                first_choice = entry["mapped_to"] + "." + ext
+                actual_file = which_file_exists(entry["mapped_to"], "." + ext)
+                if first_choice != actual_file:
+                    logging.warning("Skipping %s because of %s" % (first_choice, actual_file))
+                else:
+                    logging.warning("Skipping %s" % first_choice)
             else:
+                logging.info("Writing " + entry["mapped_to"] + "." + ext)
                 replace_in_file(template_dir + (template % ext), entry["mapped_to"] + "." + ext, dict)
 
 
