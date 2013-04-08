@@ -129,14 +129,14 @@ def parse_view_schema(filename, prefix="", length="long"):
 
             # automatically remove proper extensions, including everything thereafter
             pos = line.find("SectionViewController")
-            if pos <= 0:
+            if pos < 0:
                 pos = line.find("ViewController")
-            if pos <= 0:
+            if pos < 0:
                 pos = line.find("SectionVC")
-            if pos <= 0:
+            if pos < 0:
                 pos = line.find("VC")
 
-            if pos <= 0: # default, only the unique name is provided
+            if pos < 0: # default, only the unique name is provided
                 pos = len(line)
                 if length=="long":
                     if is_section: # append the decscriptive full name as necessary
