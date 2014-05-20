@@ -1,5 +1,6 @@
 # Manticore iOS View Generator
 # Copyright (C) 2013, Richard H Fung at Yeti LLC
+# Edited: 2014, Collin Schupman at Yeti LLC
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
 # for view controllers for MCViewFactory.h/m.
 #
 # Assumptions:
-#    * Run from the project directory
+#    * Run from the project directory with {Prefix}AppDelegate.m
 #    * Template files exist:
 #          * TemplateSectionViewController.{xib,h,m}.template
 #          * TemplateViewController.{xib,h,m}.template
@@ -28,7 +29,11 @@
 #               View2A
 #               View2B
 #
-# The output should be copied and pasted into the appropriate place in the source code.
+# The script will generate a VCConstants.h in the directory for use throughout the app
+# it will also create a folder with a name given by the client to hold all the .h, .m and .xib files
+# finally, it will add a function to the {Prefix}AppDelegate file to register all the VCs
+# in - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions, add this call:
+# [self registerVCs];
 #
 
 import sys
