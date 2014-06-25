@@ -56,7 +56,7 @@ def write_define(schema):
         append = ""
         if i % 5 == 0:
             append = " // " + str(i)
-        new_file.write('{:<30}'.format("#define " + s["variable_name"]) +  ' @"' +  s["mapped_to"] + '" ' + append + "\n")
+        print('{:<30}'.format("#define " + s["variable_name"]) +  ' @"' +  s["mapped_to"] + '" ' + append + "\n")
         i = i + 1
     new_file.close()
 
