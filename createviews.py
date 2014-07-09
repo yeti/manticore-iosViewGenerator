@@ -1,5 +1,6 @@
 # Manticore iOS View Generator
 # Copyright (C) 2013, Richard H Fung at Yeti LLC
+# Edited: 2014, Collin Schupman at Yeti LLC
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +16,7 @@
 # for view controllers for MCViewFactory.h/m.
 #
 # Assumptions:
-#    * Run from the project directory
+#    * Run from the project directory with {Prefix}AppDelegate.m
 #    * Template files exist:
 #          * TemplateSectionViewController.{xib,h,m}.template
 #          * TemplateViewController.{xib,h,m}.template
@@ -28,7 +29,11 @@
 #               View2A
 #               View2B
 #
-# The output should be copied and pasted into the appropriate place in the source code.
+# The script will generate a VCConstants.h in the directory for use throughout the app
+# it will also create a folder with a name given by the client to hold all the .h, .m and .xib files
+# finally, it will add a function to the {Prefix}AppDelegate file to register all the VCs
+# in - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions, add this call:
+# [self registerVCs];
 #
 
 import sys
@@ -44,24 +49,27 @@ SHORT_SECTION_SUFFIX = "SectionVC"
 SHORT_VIEW_SUFFIX = "VC"
 
 def write_define(schema):
+    new_file = open("VCConstants.h", "w")
+
     i = 1
     for s in schema:
         append = ""
         if i % 5 == 0:
             append = " // " + str(i)
-        print '{:<30}'.format("#define " + s["variable_name"]) +  ' @"' +  s["mapped_to"] + '" ' + append
+        print('{:<30}'.format("#define " + s["variable_name"]) +  ' @"' +  s["mapped_to"] + '" ' + append + "\n")
         i = i + 1
+    new_file.close()
 
-def write_register(schema):
+def write_register(schema, method):
     i = 1
     for s in schema:
         append = ""
         if i % 5 == 0:
             append = " // " + str(i)
-        print "[factory registerView:" + s["variable_name"] + "];" + append
+        method = method + "\t[factory registerView:" + s["variable_name"] + "];" + append + "\n"
         i = i + 1
-
-
+    return method
+        
 def prefix_remover(name, prefix):
     if len(prefix):
         if name[0:len(prefix)] == prefix:
@@ -264,7 +272,7 @@ def which_file_exists(name, extension):
     else:
         return ""   
 
-def create_templates_from_schema(schema):
+def create_templates_from_schema(schema, folder):
     for entry in schema:
         template = ""
         base_class = ""
@@ -296,6 +304,7 @@ def create_templates_from_schema(schema):
 
         # create the files
         template_dir = os.path.dirname(os.path.realpath(__file__)) + "/"
+                
         for ext in ("xib", "h", "m"):
             if check_file_exists(entry["mapped_to"], "." + ext):
                 first_choice = entry["mapped_to"] + "." + ext
@@ -306,24 +315,46 @@ def create_templates_from_schema(schema):
                     logging.warning("Skipping %s" % first_choice)
             else:
                 logging.info("Writing " + entry["mapped_to"] + "." + ext)
-                replace_in_file(template_dir + (template % ext), entry["mapped_to"] + "." + ext, dict)
+                vcs_dir = os.getcwd() + "/" + folder + "/"
+                if not os.path.exists(vcs_dir):
+                    os.makedirs(vcs_dir)
+                replace_in_file(template_dir + (template % ext), vcs_dir + entry["mapped_to"] + "." + ext, dict)
 
 
 def main_script(schema_file, prefix, mode):
+
+    print prefix
+    
+
     (sections, views) = parse_view_schema(schema_file, prefix, mode)
 
-    create_templates_from_schema(sections)
-    create_templates_from_schema(views)
-    print
+    # Write out the vcs
+    print "Please enter folder for your view controllers to go:\n"
+    folder = raw_input()
+    create_templates_from_schema(sections, folder)
+    create_templates_from_schema(views, folder)
 
-    print "// Include the following lines in a reusable header file"
+    # write out the constants
     write_define(sections)
     write_define(views)
-    print
-    print "// Include the following lines in application:didFinishLaunchingWithOptions:"
-    print "MCViewFactory *factory = [MCViewFactory sharedFactory];"
-    write_register(sections)
-    write_register(views)
+
+    marker = "#pragma mark - RegisterNibs\n"
+    
+    method = "\n- (void) registerVCs {\n\n"
+    method = method + "\tMCViewFactory *factory = [MCViewFactory sharedFactory];\n"
+    method = method + "\t[factory registerView:VIEW_BUILTIN_MAIN];\n" + "\t[factory registerView:VIEW_BUILTIN_ERROR];\n"
+    method = write_register(sections, method)
+    method = write_register(views, method)
+    method = method + "\n}\n\n"
+    with open(prefix + "AppDelegate.m", "r+") as codefile:
+        line = ""
+        while line != marker:
+            line = codefile.readline()
+        pos = codefile.tell()
+        remainder = codefile.read()
+        codefile.seek(pos)
+        codefile.write(method)
+        codefile.write(remainder)
 
 if len(sys.argv) != 4:
     print "Usage: %s <schema_file> <file_prefix> {short|long}" % sys.argv[0]
